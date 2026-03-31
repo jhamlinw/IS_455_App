@@ -1,8 +1,9 @@
-import { getDb } from "@/lib/db";
-import { notFound } from "next/navigation";
-import Link from "next/link";
+"use client";
 
-export const dynamic = "force-dynamic";
+import { useEffect, useState } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { Suspense } from "react";
 
 interface OrderDetail {
   order_id: number;
@@ -22,35 +23,51 @@ interface OrderItem {
   line_total: number;
 }
 
-export default async function OrderDetailPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ orderId: string }>;
-  searchParams: Promise<{ success?: string }>;
-}) {
-  const { orderId } = await params;
-  const query = await searchParams;
-  const db = getDb();
+function SuccessBanner() {
+  const searchParams = useSearchParams();
+  if (!searchParams.get("success")) return null;
+  return (
+    <div className="bg-green-50 border border-green-200 text-green-700 rounded p-3 text-sm mb-4">
+      Order placed successfully!
+    </div>
+  );
+}
 
-  const order = db
-    .prepare(
-      `SELECT order_id, order_datetime, order_subtotal, shipping_fee, tax_amount,
-              order_total, payment_method, shipping_state
-       FROM orders WHERE order_id = ?`
-    )
-    .get(Number(orderId)) as OrderDetail | undefined;
+export default function OrderDetailPage() {
+  const { orderId } = useParams<{ orderId: string }>();
+  const [order, setOrder] = useState<OrderDetail | null>(null);
+  const [items, setItems] = useState<OrderItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!order) notFound();
+  useEffect(() => {
+    fetch(`/api/orders/${orderId}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Order not found");
+        return res.json();
+      })
+      .then((data) => {
+        setOrder(data.order);
+        setItems(data.items);
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [orderId]);
 
-  const items = db
-    .prepare(
-      `SELECT p.product_name, oi.quantity, oi.unit_price, oi.line_total
-       FROM order_items oi
-       JOIN products p ON p.product_id = oi.product_id
-       WHERE oi.order_id = ?`
-    )
-    .all(Number(orderId)) as OrderItem[];
+  if (loading) return <p className="text-gray-400">Loading order...</p>;
+
+  if (error || !order) {
+    return (
+      <div>
+        <Link href="/orders" className="text-indigo-600 hover:text-indigo-800 text-sm mb-4 inline-block">
+          &larr; Back to Orders
+        </Link>
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded p-4 text-sm">
+          {error || "Order not found"}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -58,11 +75,9 @@ export default async function OrderDetailPage({
         &larr; Back to Orders
       </Link>
 
-      {query.success && (
-        <div className="bg-green-50 border border-green-200 text-green-700 rounded p-3 text-sm mb-4">
-          Order placed successfully!
-        </div>
-      )}
+      <Suspense>
+        <SuccessBanner />
+      </Suspense>
 
       <h1 className="text-2xl font-bold text-gray-900 mb-2">
         Order #{order.order_id}
