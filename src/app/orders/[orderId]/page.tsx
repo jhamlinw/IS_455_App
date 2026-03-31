@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Suspense } from "react";
+import { getLocalOrders } from "@/lib/local-orders";
 
 interface OrderDetail {
   order_id: number;
@@ -50,7 +50,16 @@ export default function OrderDetailPage() {
         setOrder(data.order);
         setItems(data.items);
       })
-      .catch((err) => setError(err.message))
+      .catch(() => {
+        // Fall back to localStorage if the server doesn't have this order
+        const local = getLocalOrders().find((o) => o.order_id === Number(orderId));
+        if (local) {
+          setOrder(local);
+          setItems(local.items);
+        } else {
+          setError("Order not found");
+        }
+      })
       .finally(() => setLoading(false));
   }, [orderId]);
 

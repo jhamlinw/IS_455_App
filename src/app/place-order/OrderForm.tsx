@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { saveLocalOrder } from "@/lib/local-orders";
 
 interface Product {
   product_id: number;
@@ -22,7 +22,6 @@ export default function OrderForm({
   products: Product[];
   customerId: number;
 }) {
-  const router = useRouter();
   const [lines, setLines] = useState<LineItem[]>([
     { product_id: products[0]?.product_id ?? 0, quantity: 1 },
   ]);
@@ -61,12 +60,14 @@ export default function OrderForm({
         body: JSON.stringify({ customer_id: customerId, items: lines }),
       });
 
+      const data = await res.json();
       if (!res.ok) {
-        const data = await res.json();
         throw new Error(data.error || "Failed to place order");
       }
 
-      // Hard redirect so the orders page fetches fresh from the API
+      // Cache the order locally so it always shows in order history
+      saveLocalOrder({ ...data.order, customer_id: customerId, items: data.items });
+
       window.location.href = "/orders?success=1";
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Unknown error");

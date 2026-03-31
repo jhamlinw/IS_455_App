@@ -64,12 +64,37 @@ export async function POST(req: NextRequest) {
         insertItem.run(orderId, li.product_id, li.quantity, li.price, li.price * li.quantity);
       }
 
-      return orderId;
+      return { orderId, subtotal, shippingFee, taxAmount, orderTotal, lineItems, now };
     });
 
-    const orderId = transaction();
+    const result = transaction();
 
-    return NextResponse.json({ order_id: Number(orderId) });
+    // Return full order details so the client can cache them locally
+    const getProductName = db.prepare("SELECT product_name FROM products WHERE product_id = ?");
+    const orderItems = result.lineItems.map((li: { product_id: number; quantity: number; price: number }) => {
+      const p = getProductName.get(li.product_id) as { product_name: string };
+      return {
+        product_name: p.product_name,
+        quantity: li.quantity,
+        unit_price: li.price,
+        line_total: li.price * li.quantity,
+      };
+    });
+
+    return NextResponse.json({
+      order_id: Number(result.orderId),
+      order: {
+        order_id: Number(result.orderId),
+        order_datetime: result.now,
+        order_subtotal: result.subtotal,
+        shipping_fee: result.shippingFee,
+        tax_amount: result.taxAmount,
+        order_total: result.orderTotal,
+        payment_method: "card",
+        shipping_state: customer.state,
+      },
+      items: orderItems,
+    });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal server error";
     return NextResponse.json({ error: message }, { status: 500 });

@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { getLocalOrders } from "@/lib/local-orders";
 
 interface Order {
   order_id: number;
@@ -23,14 +24,42 @@ function SuccessBanner() {
   );
 }
 
+function getCookie(name: string): string | undefined {
+  return document.cookie
+    .split("; ")
+    .find((c) => c.startsWith(name + "="))
+    ?.split("=")[1];
+}
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const customerId = getCookie("customer_id");
+
     fetch("/api/orders")
       .then((res) => res.json())
-      .then((data) => setOrders(data.orders))
+      .then((data) => {
+        const serverOrders: Order[] = data.orders || [];
+        const serverIds = new Set(serverOrders.map((o: Order) => o.order_id));
+
+        // Merge locally cached orders that the server doesn't have yet
+        const localOrders = getLocalOrders()
+          .filter((lo) => !serverIds.has(lo.order_id))
+          .filter((lo) => String(lo.customer_id) === customerId)
+          .map((lo) => ({
+            order_id: lo.order_id,
+            order_datetime: lo.order_datetime,
+            order_total: lo.order_total,
+            payment_method: lo.payment_method,
+            shipping_state: lo.shipping_state,
+          }));
+
+        const merged = [...localOrders, ...serverOrders];
+        merged.sort((a, b) => b.order_id - a.order_id);
+        setOrders(merged);
+      })
       .finally(() => setLoading(false));
   }, []);
 
