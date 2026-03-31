@@ -66,8 +66,9 @@ export default function OrderForm({
         throw new Error(data.error || "Failed to place order");
       }
 
-      router.push("/orders?success=1");
-      router.refresh();
+      const data = await res.json();
+      // Hard redirect to force a fresh server render on the same instance
+      window.location.href = `/orders/${data.order_id}?success=1`;
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {

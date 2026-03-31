@@ -24,10 +24,13 @@ interface OrderItem {
 
 export default async function OrderDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ orderId: string }>;
+  searchParams: Promise<{ success?: string }>;
 }) {
   const { orderId } = await params;
+  const query = await searchParams;
   const db = getDb();
 
   const order = db
@@ -54,6 +57,12 @@ export default async function OrderDetailPage({
       <Link href="/orders" className="text-indigo-600 hover:text-indigo-800 text-sm mb-4 inline-block">
         &larr; Back to Orders
       </Link>
+
+      {query.success && (
+        <div className="bg-green-50 border border-green-200 text-green-700 rounded p-3 text-sm mb-4">
+          Order placed successfully!
+        </div>
+      )}
 
       <h1 className="text-2xl font-bold text-gray-900 mb-2">
         Order #{order.order_id}
