@@ -1,0 +1,22 @@
+{
+  "model_name": "late_delivery_pipeline",
+  "model_version": "1.0.0",
+  "trained_at_utc": "2026-03-31T21:45:24.598977",
+  "num_training_rows": 3750,
+  "features": [
+    "order_subtotal",
+    "shipping_fee",
+    "order_total",
+    "promo_used",
+    "promised_days",
+    "customer_age",
+    "customer_order_count",
+    "order_hour",
+    "order_dow",
+    "carrier",
+    "shipping_method",
+    "distance_band",
+    "gender",
+    "customer_segment"
+  ]
+}
