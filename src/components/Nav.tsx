@@ -2,17 +2,20 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 export default function Nav() {
   const [customerName, setCustomerName] = useState<string | null>(null);
+  const pathname = usePathname();
 
+  // Re-read cookie on every navigation
   useEffect(() => {
     const name = document.cookie
       .split("; ")
       .find((c) => c.startsWith("customer_name="))
       ?.split("=")[1];
-    if (name) setCustomerName(decodeURIComponent(name));
-  }, []);
+    setCustomerName(name ? decodeURIComponent(name) : null);
+  }, [pathname]);
 
   const links = [
     { href: "/select-customer", label: "Select Customer" },
